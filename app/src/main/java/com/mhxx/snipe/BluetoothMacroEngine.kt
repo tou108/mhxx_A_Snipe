@@ -1,6 +1,7 @@
 package com.mhxx.snipe
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.currentCoroutineContext
 
 /**
  * BluetoothMacroEngine
@@ -83,7 +84,7 @@ class BluetoothMacroEngine(
 
     private suspend fun executeActions(actions: List<BtAction>) {
         for (action in actions) {
-            ensureActive()
+            currentCoroutineContext().ensureActive()
             when (action) {
                 is BtAction.Press -> {
                     btController.pressButton(action.button, action.duration)
@@ -100,7 +101,7 @@ class BluetoothMacroEngine(
                 }
                 is BtAction.Repeat -> {
                     repeat(action.count) {
-                        ensureActive()
+                        currentCoroutineContext().ensureActive()
                         executeActions(action.actions)
                     }
                 }
