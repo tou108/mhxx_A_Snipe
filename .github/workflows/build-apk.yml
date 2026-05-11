@@ -1,0 +1,104 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:   # 手動実行も可能
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ① リポジトリをチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ② Java 17 をセットアップ（AGP 8.x 対応）
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ③ Gradle キャッシュ（ビルド高速化）
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # ④ gradlew に実行権限を付与
+      - name: Grant execute permission to gradlew
+        run: chmod +x gradlew
+
+      # ⑤ Debug APK をビルド
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # ⑥ ビルド成果物（APK）をアップロード
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mhxx-snipe-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+  # --- リリースビルド（タグ付きプッシュ時のみ） ---
+  release:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Grant execute permission to gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK (unsigned)
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload Release APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mhxx-snipe-release-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 90
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
