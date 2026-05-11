@@ -120,7 +120,7 @@ class BluetoothHidController(
         "Pro Controller",
         "Gamepad",
         "Nintendo",
-        BluetoothHidDevice.SUBCLASS2_GAMEPAD,
+        BluetoothHidDevice.SUBCLASS1_GAMEPAD,
         buildDescriptor()
     )
 
